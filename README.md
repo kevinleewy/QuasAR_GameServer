@@ -5,7 +5,7 @@ Step 1. Clone this repository
 
 Step 2. Install dependencies
 ```
-npm init
+npm install
 ```
 
 
