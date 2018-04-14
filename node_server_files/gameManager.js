@@ -3,8 +3,8 @@ var gameState = null;
 
 module.exports = {
 
-	gameExists : function(p1_id) {
-		return gameState != null && gameState.isPlayer1(p1_id);
+	gameExists : function(playerId) {
+		return gameState != null && (gameState.isPlayer1(playerId) || gameState.isPlayer2(playerId));
 	},
 
 	createGame : function(p1_id, p2_id){
@@ -16,7 +16,7 @@ module.exports = {
 		} else {
 			gameState = new Game(p1_id, p2_id);
 			status = "success";
-			value = gameState.getState();
+			value = gameState.getState(p1_id);
 		}
 		return {
 			"status" : status,
@@ -24,12 +24,15 @@ module.exports = {
 		}
 	},
 
-	getGameState : function() {
+	getGameState : function(playerId) {
 		var status = "error";
 		var value = "Game not created";
 		if(gameState != null){
 			status = "success";
-			value = gameState.getState();
+			value = gameState.getState(playerId);
+		}
+		if(typeof value == "string"){
+			status = "error";
 		}
 		return {
 			"status" : status,
@@ -66,6 +69,10 @@ module.exports = {
 					status = "success";
 					value = gameState.directAttack(playerId, params["attackerSlot"]);
 					break;
+				case "nextPhase":
+					status = "success";
+					value = gameState.endTurn(playerId);
+					break;
 				case "endTurn":
 					status = "success";
 					value = gameState.endTurn(playerId);
@@ -83,7 +90,7 @@ module.exports = {
 			status = "error";
 			value = value["result"];
 		}
-		console.log("Game State:\n" + JSON.stringify(gameState.getState(), null, "  "));
+		console.log("Game State:\n" + JSON.stringify(gameState.getState(playerId), null, "  "));
 		return {
 			"status" : status,
 			"value"  : value

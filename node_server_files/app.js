@@ -127,10 +127,10 @@ io.on('connect', function(client) {
     var response;
     if(!GM.gameExists(token)){
       console.log("Creating game");
-      response = GM.createGame(token, 0);
+      response = GM.createGame(token, "Player2");
     } else {
       console.log("Joining game");
-      response = GM.getGameState();
+      response = GM.getGameState(token);
     }
     client.emit('joinedGame', response);
   });
@@ -145,7 +145,17 @@ io.on('connect', function(client) {
 
   client.on('actionSelect', function(message){
     var response = GM.conductAction(token, message);
-    client.emit('actionResponse', response);
+    socketClientsArray.forEach(function(socket_value) {
+      // check this is a connected socketID
+      if (io.sockets.connected[socket_value.socketid]) {
+            // if checks out that this is a connected socket emit the event to socketID
+          io.sockets.connected[socket_value.socketid].emit('actionResponse', response);
+      };
+      
+      // print to console current socket being emitted to
+      //console.log (socket_value.socketid);
+    })
+    //client.emit('actionResponse', response);
   });
 
 });
