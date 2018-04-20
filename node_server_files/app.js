@@ -18,6 +18,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 var GM = require('./gameManager.js');
+var GameRoomController = require('./controllers/GameRoomController.js');
 
 var express = require('express');
 var connection = require('./connection');
@@ -27,6 +28,8 @@ var socketserver = require('http').createServer();
 var io = require('socket.io')(socketserver);
 var socketClientsArray = [];
 connection.init();
+
+var SOCKET_PORT = 8080;
 
 // GET call to retrieve that headlines associated with the newsgroups the user belongs to
 app.get ('/headlines', function (request, response){
@@ -161,6 +164,8 @@ io.on('connect', function(client) {
 });
 
 
-socketserver.listen(8080); // Socket.IO, port 8080
+socketserver.listen(SOCKET_PORT); // Socket.IO, port 8080
 app.listen (3000); // API, port 3000
+
+console.log("Server started. SocketIO listening on port " + SOCKET_PORT);
 

@@ -1,67 +1,64 @@
-var Player = require('./models/player.js');
+var Player = require('./player.js');
+var util = require('../shared/util.js');
 
 class Game {
 
-	constructor(p1_id, p2_id){
-		this.player1 = new Player(p1_id);
-		this.player2 = new Player(p2_id);
-		this.turnPlayer = this.player1;
-		this.otherPlayer = this.player2;
+	constructor(playerIds){
+		this.players = [];
+		playerIds.forEach(function(id){
+			this.players.push(new Player(id));
+		});
+		this.turnPlayerIndex = util.randomXToY(0, this.players.length-1);
 		this.stack = [];
 	}
 
-	getState(playerId){
-		if(this.isPlayer1(playerId) || playerId === "Spectator"){
-			return {
-				"player1" : this.player1.getState(),
-				"player2" : this.player2.getState(),
-				"turnPlayer" : this.turnPlayer.getId(),
-				"availableActions": [
-					"draw",
-					"attack",
-					"endTurn",
-					"surrender"
-				],
-				"stack" : this.stack
-			}
-		} else if(this.isPlayer2(playerId)){
-			return {
-				"player1" : this.player2.getState(),
-				"player2" : this.player1.getState(),
-				"turnPlayer" : this.turnPlayer.getId(),
-				"availableActions": [
-					"draw",
-					"attack",
-					"endTurn",
-					"surrender"
-				],
-				"stack" : this.stack
-			}
-		} else {
-			return "Unrecognized player ID";
+	getState(){
+		playersArray = [];
+
+		this.players.forEach(function(player){
+			playersArray.push(player.getState());
+		});
+
+		return {
+			"players" : playersArray,
+			"turnPlayerIndex" : this.turnPlayerIndex,
+			"stack" : this.stack
 		}
 	}
 
 	draw(playerId){
-		if(playerId != this.turnPlayer.getId()){
-			return {
-				"player" 	: playerId,
-				"event"		: "draw",
-				"result"	: "not turn player"
-			}
+		if(!isTurnPlayer(playerId)){
+			throw 1202;
 		}
-		var newCard = this.turnPlayer.draw();
-		if(newCard < 0){
-			return {
-				"player" 	: playerId,
+
+		try {
+			var newCard = this.turnPlayer.draw();
+
+			return [{
 				"event"		: "draw",
-				"result"	: "no cards left in deck"
+				"player" 	: playerId,
+				"result"	: [newCard]
+			}]
+		} catch (err) {
+			if(err === 1203){
+				this.players[this.turnPlayerIndex].eliminated = true;
+				do {
+					this.turnPlayerIndex = (this.turnPlayerIndex + 1) % this.players.length;
+				} while (this.players[this.turnPlayerIndex].eliminated)
+				return [
+					{
+						"event" : "eliminated",
+						"playerId" : playerId,
+						"condition" : "deck out" 
+					},
+					{
+						"event" : "startTurn",
+						"playerId" : playerId,
+					}
+				];
+			} else {
+				throw err;
 			}
-		}
-		return {
-			"player" 	: playerId,
-			"event"		: "draw",
-			"result"	: [newCard]
 		}
 	}
 
@@ -155,30 +152,40 @@ class Game {
 		}
 	}
 
-	endTurn(playerId){
-		if(playerId != this.turnPlayer.getId()){
-			return {
-				"player" 	: playerId,
-				"event"		: "endTurn",
-				"result"	: "Not " + playerId + "'s turn"
-			}
-		}
-		var temp = this.turnPlayer;
-		this.turnPlayer = this.otherPlayer;
-		this.otherPlayer = temp;
-		return {
-			"player" 	: playerId,
-			"event"		: "endTurn",
-			"result"	: []
-		}
+	isTurnPlayer(playerId){
+		return playerId === this.players[this.turnPlayerIndex].id;
 	}
 
-	surrender() {
-		this.turnPlayer.surrender();
-		return {
-			"player" 	: this.turnPlayer.getId(),
-			"event"		: "surrender"
+	endTurn(playerId){
+		if(!isTurnPlayer(playerId)){
+			throw 1202;
 		}
+		
+		do {
+			this.turnPlayerIndex = (this.turnPlayerIndex + 1) % this.players.length;
+		} while (this.players[this.turnPlayerIndex].eliminated)
+
+		return [
+			{
+				"event" : "endTurn",
+				"playerId" : playerId,
+				"nextPlayerId" : this.players[this.turnPlayerIndex].id
+			}
+		];
+	}
+
+	surrender(playerId) {
+		if(!isTurnPlayer(playerId)){
+			throw 1202;
+		}
+		this.players[this.turnPlayerIndex].eliminated = true;
+		return [
+			{
+				"event" : "eliminated",
+				"playerId" : playerId,
+				"condition" : "surrender"
+			}
+		];
 	}
 
 	hasEnded(){
@@ -198,13 +205,6 @@ class Game {
 		}
 	}
 
-	isPlayer1(id){
-		return this.player1.getId() == id;
-	}
-
-	isPlayer2(id){
-		return this.player2.getId() == id;
-	}
 }
 
 module.exports = Game;

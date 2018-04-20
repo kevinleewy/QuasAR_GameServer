@@ -4,7 +4,8 @@ var gameState = null;
 module.exports = {
 
 	gameExists : function(playerId) {
-		return gameState != null && (gameState.isPlayer1(playerId) || gameState.isPlayer2(playerId));
+		return gameState != null &&
+			(gameState.isPlayer1(playerId) || gameState.isPlayer2(playerId) || playerId === "Spectator");
 	},
 
 	createGame : function(p1_id, p2_id){
@@ -13,6 +14,9 @@ module.exports = {
 		if(gameState != null){
 			status = "error";
 			value = "Game already exists";
+		} else if(p1_id === "Spectator"){
+			status = "error";
+			value = "Spectator cannot create games";
 		} else {
 			gameState = new Game(p1_id, p2_id);
 			status = "success";
@@ -90,6 +94,7 @@ module.exports = {
 			status = "error";
 			value = value["result"];
 		}
+		console.log("Response:\n" + JSON.stringify(value, null, "  "));
 		console.log("Game State:\n" + JSON.stringify(gameState.getState(playerId), null, "  "));
 		return {
 			"status" : status,
